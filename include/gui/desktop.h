@@ -18,7 +18,7 @@ namespace myos
             
         public:
             Desktop(common::int32_t w, common::int32_t h,
-                common::uint8_t r, common::uint8_t g, common::uint8_t b);
+                common::uint8_t r, common::uint8_t g, common::uint8_t b, TaskManager* manager);
             ~Desktop();
             
             void Draw(common::GraphicsContext* gc);

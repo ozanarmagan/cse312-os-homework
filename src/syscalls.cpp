@@ -17,6 +17,7 @@ SyscallHandler::~SyscallHandler()
 
 void printf(char*);
 void printfHex32(uint32_t key);
+void printDec32(uint32_t key);
 
 uint32_t SyscallHandler::HandleInterrupt(uint32_t esp)
 {
@@ -29,13 +30,13 @@ uint32_t SyscallHandler::HandleInterrupt(uint32_t esp)
             break;
         case 5:
             cpu->ecx = taskManager->ForkTask(cpu);
-            esp = (uint32_t)taskManager->Schedule((CPUState*)cpu);
+            return (uint32_t)taskManager->Schedule((CPUState*)cpu);
             break;
         case 6:
             cpu->ecx = taskManager->GetCurrentTask()->getPID();
             break;
         case 7:
-            return taskManager->ExecveTask((void(*)())cpu->ebx);
+            return taskManager->ExecveTask((void*)cpu->ebx, cpu->ecx, (uint32_t*)cpu->edx, (CPUState*)cpu);
             break;
         case 8:
             taskManager->ExitTask();
@@ -49,7 +50,23 @@ uint32_t SyscallHandler::HandleInterrupt(uint32_t esp)
             cpu->ecx = taskManager->GetCurrentTask()->getPPID();
             break;  
         case 11:
-            return taskManager->ExecveTask((void(*)(uint32_t))cpu->ebx, cpu->ecx, (CPUState*)cpu);
+            cpu->ecx = taskManager->GetTimerInterruptCounter();
+            break;
+        case 12: 
+            cpu->ecx = taskManager->ForkTask(cpu, cpu->ebx);
+            esp = (uint32_t)taskManager->Schedule((CPUState*)cpu);
+            break;
+        case 13:
+            printDec32(cpu->ebx);
+            break;
+        case 14: 
+            taskManager->setTaskWithDynamicPriority(taskManager->GetCurrentTask()->getPID());
+            break;
+        case 15:
+            cpu->ebx = (uint32_t)taskManager->readKeyPresses();
+            break;
+        case 16:
+            cpu->ebx = (uint32_t)taskManager->isMouseClicked();
             break;
         default:
             break;

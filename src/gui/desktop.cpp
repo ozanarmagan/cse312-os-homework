@@ -7,9 +7,9 @@ using namespace myos::gui;
 
 
 Desktop::Desktop(common::int32_t w, common::int32_t h,
-                common::uint8_t r, common::uint8_t g, common::uint8_t b)
-:   CompositeWidget(0,0,0, w,h,r,g,b),
-    MouseEventHandler()
+                common::uint8_t r, common::uint8_t g, common::uint8_t b, TaskManager* manager)
+:   CompositeWidget(0,0,0, w,h,r,g,b, manager),
+    MouseEventHandler(manager)
 {
     MouseX = w/2;
     MouseY = h/2;

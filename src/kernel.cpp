@@ -13,6 +13,9 @@
 #include <gui/desktop.h>
 #include <gui/window.h>
 #include <multitasking.h>
+#include <syscallwrapper.h>
+#include <program.h>
+#include <microkernel.h>
 
 #include <drivers/amd_am79c973.h>
 
@@ -29,8 +32,17 @@ using namespace myos::gui;
 
 TaskManager taskManager;
 
+
+uint32_t rand() {
+    timer = timer * 1103515245 + 12345;
+    return (unsigned int) (timer / 65536) % 32768;
+    return timer;
+}
+
 void printf(char* str)
 {
+    for(int i = 0; i<500000; i++);
+
     static uint16_t* VideoMemory = (uint16_t*)0xb8000;
 
     static uint8_t x=0,y=0;
@@ -42,6 +54,12 @@ void printf(char* str)
             case '\n':
                 x = 0;
                 y++;
+                break;
+            case '\b':
+                if(x > 0) {
+                    x--;
+                    VideoMemory[80*y+x] = (VideoMemory[80*y+x] & 0xFF00) | ' ';
+                }
                 break;
             default:
                 VideoMemory[80*y+x] = (VideoMemory[80*y+x] & 0xFF00) | str[i];
@@ -57,52 +75,38 @@ void printf(char* str)
 
         if(y >= 25)
         {
-            for(y = 0; y < 25; y++)
-                for(x = 0; x < 80; x++)
-                    VideoMemory[80*y+x] = (VideoMemory[80*y+x] & 0xFF00) | ' ';
+            for(int i = 0; i < 25; i++)
+                for(int j = 0; j < 80; j++)
+                    VideoMemory[80*i+j] = (VideoMemory[80*i+j] & 0xFF00) | ' ';
             x = 0;
             y = 0;
         }
     }
 }
 
-void printfHex(uint8_t key)
-{
-    char* foo = "00";
-    char* hex = "0123456789ABCDEF";
-    foo[0] = hex[(key >> 4) & 0xF];
-    foo[1] = hex[key & 0xF];
-    printf(foo);
-}
-void printfHex16(uint16_t key)
-{
-    printfHex((key >> 8) & 0xFF);
-    printfHex( key & 0xFF);
-}
-void printfHex32(uint32_t key)
-{
-    printfHex((key >> 24) & 0xFF);
-    printfHex((key >> 16) & 0xFF);
-    printfHex((key >> 8) & 0xFF);
-    printfHex( key & 0xFF);
-}
-
-void printDec(uint8_t key)
-{
-    char* foo = "00";
-    foo[0] = key / 10 + '0';
-    foo[1] = key % 10 + '0';
-    printf(foo);
-}
-
 void printDec32(uint32_t key)
 {
-    char* foo = "0000000000";
+    char foo[] = "0000000000";
     for(int i = 9; i >= 0; i--)
     {
         foo[i] = key % 10 + '0';
         key /= 10;
     }
+
+    // count leading zeros
+    int i = 0;
+    while(foo[i] == '0') i++;
+
+    if (i == 10) i--;
+    
+    // move to left
+    for(int j = i; j < 10; j++)
+        foo[j-i] = foo[j];
+    
+    foo[10-i] = '\0';
+
+
+
     printf(foo);
 }
 
@@ -112,12 +116,16 @@ void printDec32(uint32_t key)
 
 class PrintfKeyboardEventHandler : public KeyboardEventHandler
 {
+private:
 public:
     void OnKeyDown(char c)
     {
         char* foo = " ";
         foo[0] = c;
         printf(foo);
+    }
+    PrintfKeyboardEventHandler(TaskManager* manager) : KeyboardEventHandler(manager)
+    {
     }
 };
 
@@ -126,7 +134,7 @@ class MouseToConsole : public MouseEventHandler
     int8_t x, y;
 public:
     
-    MouseToConsole()
+    MouseToConsole(TaskManager* manager) : MouseEventHandler(manager)
     {
         uint16_t* VideoMemory = (uint16_t*)0xb8000;
         x = 40;
@@ -157,144 +165,25 @@ public:
     
 };
 
-
-
-
-void sysprintf(char* str)
+void printfHex(uint8_t key)
 {
-    asm("int $0x80" : : "a" (4), "b" (str));
+    char* foo = "00";
+    char* hex = "0123456789ABCDEF";
+    foo[0] = hex[(key >> 4) & 0xF];
+    foo[1] = hex[key & 0xF];
+    printf(foo);
 }
-
-static inline uint32_t getpid()
+void printfHex16(uint16_t key)
 {
-    uint32_t pid;
-    asm("int $0x80" : "=c" (pid) : "a" (6));
-    return pid;
+    printfHex((key >> 8) & 0xFF);
+    printfHex( key & 0xFF);
 }
-
-static inline uint32_t getppid()
+void printfHex32(uint32_t key)
 {
-    uint32_t ppid;
-    asm("int $0x80" : "=c" (ppid) : "a" (10));
-    return ppid;
-}
-
-
-
-static inline uint32_t fork()
-{
-    uint32_t pid;
-    asm("int $0x80" : "=c" (pid) : "a" (5));
-    return pid;
-}
-
-static inline void exec(void (entrypoint)())
-{
-    asm("int $0x80" : : "a" (7), "b" (entrypoint));
-}
-
-static inline void exec(void (entrypoint)(uint32_t), uint32_t arg)
-{
-    asm("int $0x80" : : "a" (11), "b" (entrypoint), "c" (arg));
-}
-
-static inline void exit()
-{
-    asm("int $0x80" : : "a" (8));
-}
-
-static inline void wait(uint32_t pid)
-{
-    asm("int $0x80" : : "a" (9), "b" (pid));
-}
-
-
-void collatz(uint32_t start) {
-    printf("Collatz conjecture\n");
-    // run collatz conjecture for each number from start to 0
-    while(start != 1) {
-        uint32_t start_ = start;
-        uint32_t counter = 0, vals[1000];
-            printf("Collatz conjecture for ");
-        printDec(start);
-        printf(": ");
-        vals[counter++] = start_;
-        while(start_ != 1) {
-            printDec(start_);
-            printf(", ");
-            if(start_ % 2 == 0) {
-                start_ = start_ / 2;
-            } else {
-                start_ = 3 * start_ + 1;
-            }
-            vals[counter++] = start_;
-        }
-        printDec(start_);
-        printf("\n");
-
-        start--;
-    }
-    exit();
-}
-
-void long_running_task(uint32_t n) {
-    uint32_t res = 0;
-    for(uint32_t i = 0; i < n; i++) {
-        for(uint32_t j = 0; j < n; j++) {
-            res += i * j;
-        }
-    }
-
-    printf("Long running task finished, result: ");
-    printDec32(res);
-    printf("\n");
-    exit();
-}
-
-
-void taskA()
-{
-    printf("Task A is running\n");
-    printf("Task A finished\n");
-    exit();
-}
-
-
-void taskB()
-{
-    printf("Task B is running\n");
-    printf("Task B finished\n");
-    exit();
-}
-
-
-void initProcess() {
-    uint32_t pid = fork();
-    if(pid == 0)
-    {
-        printf("Starting collatz conjecture\n");
-        exec(collatz, (uint32_t)100);
-    }
-    else
-    {
-        uint32_t pid2 = fork();
-        if(pid2 == 0)
-        {
-            printf("Starting long running task\n");
-            exec(long_running_task, (uint32_t)100);
-        }
-        else
-        {
-            printf("Waiting for collatz conjecture to finish\n");
-            wait(pid);
-            printf("Collatz conjecture finished\n");
-            printf("Waiting for long running task to finish\n");
-            wait(pid2);
-            printf("Long running task finished\n");
-        }
-    }
-    printf("all children finished\n");
-    while(1);
+    printfHex((key >> 24) & 0xFF);
+    printfHex((key >> 16) & 0xFF);
+    printfHex((key >> 8) & 0xFF);
+    printfHex( key & 0xFF);
 }
 
 
@@ -321,31 +210,47 @@ extern "C" void kernelMain(const void* multiboot_structure, uint32_t /*multiboot
     uint32_t* memupper = (uint32_t*)(((size_t)multiboot_structure) + 8);
     size_t heap = 10*1024*1024;
     MemoryManager memoryManager(heap, (*memupper)*1024 - heap - 10*1024);
-    
-    // printf("heap: 0x");
-    // printfHex((heap >> 24) & 0xFF);
-    // printfHex((heap >> 16) & 0xFF);
-    // printfHex((heap >> 8 ) & 0xFF);
-    // printfHex((heap      ) & 0xFF);
-    
+
     void* allocated = memoryManager.malloc(1024);
-    // printf("\nallocated: 0x");
-    // printfHex(((size_t)allocated >> 24) & 0xFF);
-    // printfHex(((size_t)allocated >> 16) & 0xFF);
-    // printfHex(((size_t)allocated >> 8 ) & 0xFF);
-    // printfHex(((size_t)allocated      ) & 0xFF);
-    // printf("\n");
+
 
     Task::gdt = &gdt;
 
-    Task task1(initProcess);
+
+// Run the following code to test the different strategies according to the build flags
+#ifdef BUILD_PART_A
+    Task task1(initProcessPartA);
     taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::ROUNDROBIN);
+#elif BUILD_PART_B_FIRST_STRATEGY
+    Task task1(initProcessFirstStrategy);
+    taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::ROUNDROBIN);
+#elif BUILD_PART_B_SECOND_STRATEGY
+    Task task1(initProcessSecondStrategy);
+    taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::ROUNDROBIN);
+#elif BUILD_PART_B_THIRD_STRATEGY
+    Task task1(initProcessThirdStrategy);
+    taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::PREEMPTIVE);
+#elif BUILD_PART_B_DYNAMIC_PRIORITY
+    Task task1(initProcessDynamicPriority);
+    taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::PREEMPTIVE_DYNAMIC_PRIORITY);
+#elif BUILD_PART_C_RANDOM_PROCESS_SPAWN
+    Task task1(initProcessRandomProcessSpawn);
+    taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::ROUNDROBIN);
+#elif BUILD_PART_C_INPUT_PRIORITY
+    Task task1(initProcessInputPriority);
+    taskManager.AddTask(task1);
+    taskManager.SetSchedulerType(TaskManager::SchedulerType::ROUNDROBIN);
+#endif
 
     
     InterruptManager interrupts(0x20, &gdt, &taskManager);
     SyscallHandler syscalls(&interrupts, 0x80, &taskManager);
-    
-    //printf("Initializing Hardware, Stage 1\n");
     
     #ifdef GRAPHICSMODE
         Desktop desktop(320,200, 0x00,0x00,0xA8);
@@ -356,7 +261,7 @@ extern "C" void kernelMain(const void* multiboot_structure, uint32_t /*multiboot
         #ifdef GRAPHICSMODE
             KeyboardDriver keyboard(&interrupts, &desktop);
         #else
-            PrintfKeyboardEventHandler kbhandler;
+            KeyboardEventHandler kbhandler(&taskManager);
             KeyboardDriver keyboard(&interrupts, &kbhandler);
         #endif
         drvManager.AddDriver(&keyboard);
@@ -365,7 +270,7 @@ extern "C" void kernelMain(const void* multiboot_structure, uint32_t /*multiboot
         #ifdef GRAPHICSMODE
             MouseDriver mouse(&interrupts, &desktop);
         #else
-            MouseToConsole mousehandler;
+            MouseToConsole mousehandler(&taskManager);
             MouseDriver mouse(&interrupts, &mousehandler);
         #endif
         drvManager.AddDriver(&mouse);
@@ -389,35 +294,6 @@ extern "C" void kernelMain(const void* multiboot_structure, uint32_t /*multiboot
         Window win2(&desktop, 40,15,30,30, 0x00,0xA8,0x00);
         desktop.AddChild(&win2);
     #endif
-
-
-    /*
-    printf("\nS-ATA primary master: ");
-    AdvancedTechnologyAttachment ata0m(true, 0x1F0);
-    ata0m.Identify();
-    
-    printf("\nS-ATA primary slave: ");
-    AdvancedTechnologyAttachment ata0s(false, 0x1F0);
-    ata0s.Identify();
-    ata0s.Write28(0, (uint8_t*)"http://www.AlgorithMan.de", 25);
-    ata0s.Flush();
-    ata0s.Read28(0, 25);
-    
-    printf("\nS-ATA secondary master: ");
-    AdvancedTechnologyAttachment ata1m(true, 0x170);
-    ata1m.Identify();
-    
-    printf("\nS-ATA secondary slave: ");
-    AdvancedTechnologyAttachment ata1s(false, 0x170);
-    ata1s.Identify();
-    // third: 0x1E8
-    // fourth: 0x168
-    */
-    
-    
-    //amd_am79c973* eth0 = (amd_am79c973*)(drvManager.drivers[2]);
-    //eth0->Send((uint8_t*)"Hello Network", 13);
-        
 
     interrupts.Activate();
 

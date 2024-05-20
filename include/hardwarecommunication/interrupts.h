@@ -8,6 +8,9 @@
 #include <hardwarecommunication/port.h>
 
 
+
+static myos::common::uint64_t timer = 0;
+
 namespace myos
 {
     namespace hardwarecommunication

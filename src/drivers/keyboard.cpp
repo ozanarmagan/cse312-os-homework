@@ -6,12 +6,9 @@ using namespace myos::drivers;
 using namespace myos::hardwarecommunication;
 
 
-KeyboardEventHandler::KeyboardEventHandler()
+void KeyboardEventHandler::OnKeyDown(char key)
 {
-}
-
-void KeyboardEventHandler::OnKeyDown(char)
-{
+    taskManager->handleKeyPress(key);
 }
 
 void KeyboardEventHandler::OnKeyUp(char)
@@ -76,7 +73,7 @@ uint32_t KeyboardDriver::HandleInterrupt(uint32_t esp)
             case 0x12: handler->OnKeyDown('e'); break;
             case 0x13: handler->OnKeyDown('r'); break;
             case 0x14: handler->OnKeyDown('t'); break;
-            case 0x15: handler->OnKeyDown('z'); break;
+            case 0x15: handler->OnKeyDown('y'); break;
             case 0x16: handler->OnKeyDown('u'); break;
             case 0x17: handler->OnKeyDown('i'); break;
             case 0x18: handler->OnKeyDown('o'); break;
@@ -92,7 +89,7 @@ uint32_t KeyboardDriver::HandleInterrupt(uint32_t esp)
             case 0x25: handler->OnKeyDown('k'); break;
             case 0x26: handler->OnKeyDown('l'); break;
 
-            case 0x2C: handler->OnKeyDown('y'); break;
+            case 0x2C: handler->OnKeyDown('z'); break;
             case 0x2D: handler->OnKeyDown('x'); break;
             case 0x2E: handler->OnKeyDown('c'); break;
             case 0x2F: handler->OnKeyDown('v'); break;
@@ -102,14 +99,14 @@ uint32_t KeyboardDriver::HandleInterrupt(uint32_t esp)
             case 0x33: handler->OnKeyDown(','); break;
             case 0x34: handler->OnKeyDown('.'); break;
             case 0x35: handler->OnKeyDown('-'); break;
-
+            case 0x0E: handler->OnKeyDown('\b'); break;
             case 0x1C: handler->OnKeyDown('\n'); break;
             case 0x39: handler->OnKeyDown(' '); break;
 
             default:
             {
-                printf("KEYBOARD 0x");
-                printfHex(key);
+                // printf("KEYBOARD 0x");
+                // printfHex(key);
                 break;
             }
         }

@@ -9,16 +9,14 @@ using namespace myos::hardwarecommunication;
 
 void printf(char*);
 
-    MouseEventHandler::MouseEventHandler()
-    {
-    }
-    
+
     void MouseEventHandler::OnActivate()
     {
     }
     
     void MouseEventHandler::OnMouseDown(uint8_t button)
     {
+        taskManager->handleMouseClick();
     }
     
     void MouseEventHandler::OnMouseUp(uint8_t button)

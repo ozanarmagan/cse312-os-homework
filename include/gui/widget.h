@@ -30,7 +30,8 @@ namespace myos
 
             Widget(Widget* parent,
                    common::int32_t x, common::int32_t y, common::int32_t w, common::int32_t h,
-                   common::uint8_t r, common::uint8_t g, common::uint8_t b);
+                   common::uint8_t r, common::uint8_t g, common::uint8_t b,
+                   TaskManager* manager);
             ~Widget();
             
             virtual void GetFocus(Widget* widget);
@@ -54,7 +55,7 @@ namespace myos
         public:
             CompositeWidget(Widget* parent,
                    common::int32_t x, common::int32_t y, common::int32_t w, common::int32_t h,
-                   common::uint8_t r, common::uint8_t g, common::uint8_t b);
+                   common::uint8_t r, common::uint8_t g, common::uint8_t b, TaskManager* manager);
             ~CompositeWidget();            
             
             virtual void GetFocus(Widget* widget);

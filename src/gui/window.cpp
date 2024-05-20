@@ -6,8 +6,8 @@ using namespace myos::gui;
 
 Window::Window(Widget* parent,
             common::int32_t x, common::int32_t y, common::int32_t w, common::int32_t h,
-            common::uint8_t r, common::uint8_t g, common::uint8_t b)
-: CompositeWidget(parent, x,y,w,h, r,g,b)
+            common::uint8_t r, common::uint8_t g, common::uint8_t b, TaskManager* manager)
+: CompositeWidget(parent, x,y,w,h, r,g,b, manager)
 {
     Dragging = false;
 }

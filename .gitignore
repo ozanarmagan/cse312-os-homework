@@ -30,3 +30,5 @@
 
 *.iso
 *.bin
+
+kernels/

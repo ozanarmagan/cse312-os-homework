@@ -14,8 +14,12 @@ namespace myos
     
         class MouseEventHandler
         {
+        private:
+            TaskManager* taskManager;
         public:
-            MouseEventHandler();
+            MouseEventHandler(TaskManager* taskManager) : taskManager(taskManager)
+            {
+            }
 
             virtual void OnActivate();
             virtual void OnMouseDown(myos::common::uint8_t button);

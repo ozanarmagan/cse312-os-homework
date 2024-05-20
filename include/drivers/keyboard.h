@@ -14,8 +14,12 @@ namespace myos
     
         class KeyboardEventHandler
         {
+        private:
+            TaskManager* taskManager;
         public:
-            KeyboardEventHandler();
+            KeyboardEventHandler(TaskManager* taskManager) : taskManager(taskManager)
+            {
+            }
 
             virtual void OnKeyDown(char);
             virtual void OnKeyUp(char);

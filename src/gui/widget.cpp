@@ -6,8 +6,8 @@ using namespace myos::gui;
 
 
 Widget::Widget(Widget* parent, int32_t x, int32_t y, int32_t w, int32_t h,
-                               uint8_t r, uint8_t g, uint8_t b)
-: KeyboardEventHandler()
+                               uint8_t r, uint8_t g, uint8_t b, TaskManager* manager)
+: KeyboardEventHandler(manager)
 {
     this->parent = parent;
     this->x = x;
@@ -76,8 +76,8 @@ void Widget::OnMouseMove(common::int32_t oldx, common::int32_t oldy, common::int
 
 CompositeWidget::CompositeWidget(Widget* parent,
                    common::int32_t x, common::int32_t y, common::int32_t w, common::int32_t h,
-                   common::uint8_t r, common::uint8_t g, common::uint8_t b)
-: Widget(parent, x,y,w,h, r,g,b)
+                   common::uint8_t r, common::uint8_t g, common::uint8_t b, TaskManager* manager)
+: Widget(parent, x,y,w,h, r,g,b, manager)
 {
     focussedChild = 0;
     numChildren = 0;
